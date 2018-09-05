@@ -19,7 +19,7 @@ pub fn radiance(ray: &Ray, depth: u32, spheres: &Vec<Sphere>) -> Vector {
     if !ray.intersect(&mut t, &mut id, spheres) {
         return Vector::zero();
     }
-  //  println!("fhfhfhfhfhf");
+
     let obj = &spheres[id];
     let x = ray.o + ray.d * t;
     let mut n = x - obj.position;//.normify();
@@ -103,8 +103,8 @@ pub fn radiance(ray: &Ray, depth: u32, spheres: &Vec<Sphere>) -> Vector {
     }
 
     let ddn = ray.d.dot(&nl);
-    let cos2t = 1.0 - nnt * nnt * (1.0 * ddn * ddn);
-    if cos2t > 0.0 {
+    let cos2t = 1.0 - nnt * nnt * (1.0 - ddn * ddn);
+    if cos2t < 0.0 {
     //            println!("4");
         return obj.emmision + f.mult(&radiance(&reflRay, depth, &spheres));
     }   
@@ -124,7 +124,7 @@ pub fn radiance(ray: &Ray, depth: u32, spheres: &Vec<Sphere>) -> Vector {
     let c;
 
     if into {
-        c = 1.0 + ddn;
+        c = 1.0 -  -ddn;
     }
     else {
         c = 1.0 - tdir.dot(&n);
@@ -134,7 +134,7 @@ pub fn radiance(ray: &Ray, depth: u32, spheres: &Vec<Sphere>) -> Vector {
     let Tr = 1.0 - Re;
     let P = 0.25 + 0.5 * Re;
     let RP = Re / P;
-    let TP = Tr / (1.0 / P);
+    let TP = Tr / (1.0 - P);
 
     if depth > 2 {
         if rng.gen_range(0.0, 1.0) > p {
@@ -148,6 +148,17 @@ pub fn radiance(ray: &Ray, depth: u32, spheres: &Vec<Sphere>) -> Vector {
     }
           //  println!("7");
     return obj.emmision + f.mult(&(*&radiance(&reflRay, depth, &spheres) * Re + radiance(&Ray::new(x,tdir),depth, &spheres) * Tr));
+}
+
+fn clamp(val: f32) -> f32 {
+    if val < 0.0 {
+        return 0.0;
+    }
+    else if val > 1.0 {
+        return 1.0;
+    }
+
+    return val;
 }
 fn to_int(val: f32) -> u32 {
     //println!("{}",val);
@@ -182,9 +193,10 @@ fn main() {
    let cx = Vector::new((w as f32) * 0.5135 / (h as f32), 0.0, 0.0);
    let mut cy = cx % cam.d;
    cy.normify();
-   let mut c : Vec<Vector> = Vec::with_capacity(h*w);
-   for _ in 0..h {
-       for _ in 0..w {
+   cy = cy * 0.5135f32;
+   let mut c : Vec<Vector> = Vec::with_capacity(w * h);
+   for _ in 0..w {
+       for _ in 0..h {
            c.push(Vector::zero());
        }
    }
@@ -225,15 +237,19 @@ fn main() {
                         let origin = cam.o + d * 140.0;
                         d.normify();
                         r = r + radiance(&Ray::new(origin, d), 0, &spheres) * (1.0 / samples);
-                        c[i] = c[i] + Vector::new(r.x, r.y, r.z) * 0.25f32;
                     }
+                    c[i] = c[i] + Vector::new(clamp(r.x), clamp(r.y), clamp(r.z)) * 0.25f32;
                 }
             } 
         }
     }
 
-    println!("P3\n{} {}\n{}\n", w, h, 255);
+    print!("P3\n{} {}\n{}\n", w, h, 255);
+    let mut why = 0;
     for el in c {
-        println!("{} {} {}", to_int(el.x), to_int(el.y), to_int(el.z));
+        why += 1;
+        print!("{} {} {} ", to_int(el.x), to_int(el.y), to_int(el.z));
     }
+
+    println!("{} {}", w * h, why);
 }

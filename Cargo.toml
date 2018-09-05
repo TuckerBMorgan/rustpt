@@ -6,3 +6,4 @@ authors = ["Tucker Morgan <tucker.bull.morgan@gmail.com>"]
 [dependencies]
 rand = "*"
 num_cpus = "*"
+image = "*"
